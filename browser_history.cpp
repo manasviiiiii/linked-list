@@ -1,105 +1,122 @@
-#include <iostream>     // For input/output
+#include <iostream>
 using namespace std;
 
-// ======================
-// Structure for Page Node
-// ======================
+// Structure representing a web page in the history
 struct Page {
-    string url;     // URL of the current page
+    string url;     // The URL of this page
     Page* prev;     // Pointer to the previous page
     Page* next;     // Pointer to the next page
 
-    // Constructor to initialize a page node
+    // Constructor: when a new Page is created, set its URL and initialize pointers
     Page(string url) {
         this->url = url;
-        prev = next = nullptr;
+        prev = NULL;
+        next = NULL;
     }
 };
 
-// =============================
-// Browser History Class (DLL)
-// =============================
 class BrowserHistory {
 private:
-    Page* current;  // Pointer to the current page
+    Page* current;  // Pointer to the currently active page
 
 public:
-    // Constructor to initialize the browser with a homepage
-    BrowserHistory(string homepage) {
-        current = new Page(homepage);
+    // Constructor: initializes the browser with a homepage (or initial URL)
+    BrowserHistory(string url) {
+        current = new Page(url);  // Create a new Page and set as current
     }
 
-    // Function to visit a new page
+    // Function to visit a new page (forwards)
     void visit(string url) {
-        Page* newPage = new Page(url); // Create a new page
+        // Step 1: Delete all forward history (pages after current)
+        Page* temp = current->next;
+        while (temp) {
+            Page* toDelete = temp;
+            temp = temp->next;
+            delete toDelete;      // Free memory for each forward page
+        }
+        current->next = NULL;     // Remove forward link from current
 
-        // Break the forward history (if any)
-        current->next = nullptr;
-
-        // Link current to the new page
-        current->next = newPage;
-        newPage->prev = current;
-
-        // Move current to new page
-        current = newPage;
+        // Step 2: Create new page and link it
+        Page* new_page = new Page(url);
+        current->next = new_page;  // Link current to new page
+        new_page->prev = current;  // Link new page back to current
+        current = new_page;        // Move current pointer to new page
 
         cout << "Visited: " << url << endl;
     }
 
-    // Function to go back to previous page
+    // Function to go back to the previous page
     void back() {
-        if (current->prev) {
+        if (current->prev) {        // Check if there’s a previous page
+            current = current->prev;  // Move current pointer back
+            cout << "Went back to: " << current->url << endl;
+        } else {
+            cout << "No previous page." << endl;
+        }
+    }
+
+    // Function to go forward to the next page
+    void next() {
+        if (current->next) {        // Check if there’s a next page
+            current = current->next;  // Move current pointer forward
+            cout << "Went forward to: " << current->url << endl;
+        } else {
+            cout << "No next page." << endl;
+        }
+    }
+
+    // Function to print the full browsing history (from start to end)
+    void printHistory() {
+        Page* temp = current;
+        // Step 1: Go back to the start of the list
+        while (temp->prev) {
+            temp = temp->prev;
+        }
+
+        // Step 2: Walk through list and print URLs
+        cout << "History: ";
+        while (temp) {
+            if (temp == current) {
+                cout << "[" << temp->url << "] ";  // Highlight current page with brackets
+            } else {
+                cout << temp->url << " ";
+            }
+            temp = temp->next;
+        }
+        cout << endl;
+    }
+
+    // Destructor: clean up all pages from memory when BrowserHistory object is destroyed
+    ~BrowserHistory() {
+        // Step 1: Go back to the start
+        while (current->prev) {
             current = current->prev;
-            cout << "Moved Back to: " << current->url << endl;
-        } else {
-            cout << "No previous page!" << endl;
         }
-    }
 
-    // Function to go forward to next page
-    void forward() {
-        if (current->next) {
+        // Step 2: Delete all nodes forward
+        while (current) {
+            Page* toDelete = current;
             current = current->next;
-            cout << "Moved Forward to: " << current->url << endl;
-        } else {
-            cout << "No forward page!" << endl;
+            delete toDelete;        // Free memory of each page
         }
-    }
-
-    // Function to display the current page
-    void showCurrent() {
-        cout << "Current Page: " << current->url << endl;
     }
 };
 
-// =========================
-// Main Function for Testing
-// =========================
 int main() {
-    // Start browser with homepage
-    BrowserHistory browser("home.com");
+    // Create a browser history starting with homepage "A"
+    BrowserHistory bh("A");
 
-    browser.showCurrent();       // Should print home.com
+    bh.visit("B");     // Visit page B
+    bh.visit("C");     // Visit page C
+    bh.back();         // Go back to B
+    bh.printHistory(); // Should show: A [B] C
 
-    // Visit new pages
-    browser.visit("page1.com");  // Visit page1
-    browser.visit("page2.com");  // Visit page2
+    bh.next();         // Go forward to C
+    bh.printHistory(); // Should show: A B [C]
 
-    // Navigate back
-    browser.back();              // Go to page1
-    browser.back();              // Go to home
-
-    // Navigate forward
-    browser.forward();           // Go to page1
-
-    // Visit new page, forward history is cleared
-    browser.visit("page3.com");  // Visit page3
-
-    // Try to move forward (should fail)
-    browser.forward();           // No forward page
-
-    // Final current page
-    browser.showCurrent();       // Should print page3.com
+    bh.back();         // Go back to B
+    bh.visit("D");     // Visit new page D (erases forward history)
+    bh.printHistory(); // Should show: A B [D]
 
     return 0;
 }
